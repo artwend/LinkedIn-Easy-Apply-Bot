@@ -25,6 +25,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from docx_helper import render_template
+from quiz_solver import QuizSolver
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ class EasyApplyBot:
         self.salary = salary
         self.rate = rate
         # self.profile_path = profile_path
+        self.quiz_solver = QuizSolver(self.salary)
         past_ids: list | None = self.get_appliedIDs(filename)
         self.appliedJobIDs: list = past_ids if past_ids != None else []
         self.filename: str = filename
@@ -123,21 +125,6 @@ class EasyApplyBot:
             "easy_apply_button": (By.XPATH, '//button[contains(@class, "jobs-apply-button")]')
 
         }
-
-        #initialize questions and answers file
-        self.qa_file = Path("qa.csv")
-        self.answers = {}
-
-        #if qa file does not exist, create it
-        if self.qa_file.is_file():
-            df = pd.read_csv(self.qa_file)
-            for index, row in df.iterrows():
-                self.answers[row['Question']] = row['Answer']
-        #if qa file does exist, load it
-        else:
-            df = pd.DataFrame(columns=["Question", "Answer"])
-            df.to_csv(self.qa_file, index=False, encoding='utf-8')
-
 
     def get_appliedIDs(self, filename) -> list | None:
         if not Path(filename).is_file():
@@ -498,7 +485,7 @@ class EasyApplyBot:
                             elements = self.get_elements("error")
 
                             for element in elements:
-                                self.process_questions()
+                                self.quiz_solver.process_questions(self.browser, self.locator, self.wait)
 
                             if "application was sent" in self.browser.page_source:
                                 log.info("Application Submitted")
@@ -542,105 +529,6 @@ class EasyApplyBot:
             #raise (e)
 
         return submitted
-    def process_questions(self):
-        time.sleep(1)
-        form = self.get_elements("fields") #self.browser.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
-        for field in form:
-            question = field.text
-            answer = self.ans_question(question.lower())
-            #radio button
-            if self.is_present(self.locator["radio_select"]):
-                try:
-                    input = field.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
-                    input.execute_script("arguments[0].click();", input)
-                except Exception as e:
-                    log.error(e)
-                    continue
-            #multi select
-            elif self.is_present(self.locator["multi_select"]):
-                try:
-                    input = field.find_element(self.locator["multi_select"])
-                    input.send_keys(answer)
-                except Exception as e:
-                    log.error(e)
-                    continue
-            # text box
-            elif self.is_present(self.locator["text_select"]):
-                try:
-                    input = field.find_element(self.locator["text_select"])
-                    input.send_keys(answer)
-                except Exception as e:
-                    log.error(e)
-                    continue
-
-            elif self.is_present(self.locator["text_select"]):
-               pass
-
-            if "Yes" or "No" in answer: #radio button
-                try: #debug this
-                    input = form.find_element(By.CSS_SELECTOR, "input[type='radio'][value={}]".format(answer))
-                    form.execute_script("arguments[0].click();", input)
-                except:
-                    pass
-
-
-            else:
-                input = form.find_element(By.CLASS_NAME, "artdeco-text-input--input")
-                input.send_keys(answer)
-
-    def ans_question(self, question): #refactor this to an ans.yaml file
-        answer = None
-        if "how many" in question:
-            answer = "1"
-        elif "experience" in question:
-            answer = "1"
-        elif "sponsor" in question:
-            answer = "No"
-        elif 'do you ' in question:
-            answer = "Yes"
-        elif "have you " in question:
-            answer = "Yes"
-        elif "US citizen" in question:
-            answer = "Yes"
-        elif "are you " in question:
-            answer = "Yes"
-        elif "salary" in question:
-            answer = self.salary
-        elif "can you" in question:
-            answer = "Yes"
-        elif "gender" in question:
-            answer = "Male"
-        elif "race" in question:
-            answer = "Wish not to answer"
-        elif "lgbtq" in question:
-            answer = "Wish not to answer"
-        elif "ethnicity" in question:
-            answer = "Wish not to answer"
-        elif "nationality" in question:
-            answer = "Wish not to answer"
-        elif "government" in question:
-            answer = "I do not wish to self-identify"
-        elif "are you legally" in question:
-            answer = "Yes"
-        else:
-            log.info("Not able to answer question automatically. Please provide answer")
-            #open file and document unanswerable questions, appending to it
-            answer = "user provided"
-            time.sleep(15)
-
-            # df = pd.DataFrame(self.answers, index=[0])
-            # df.to_csv(self.qa_file, encoding="utf-8")
-        log.info("Answering question: " + question + " with answer: " + answer)
-
-        # Append question and answer to the CSV
-        if question not in self.answers:
-            self.answers[question] = answer
-            # Append a new question-answer pair to the CSV file
-            new_data = pd.DataFrame({"Question": [question], "Answer": [answer]})
-            new_data.to_csv(self.qa_file, mode='a', header=False, index=False, encoding='utf-8')
-            log.info(f"Appended to QA file: '{question}' with answer: '{answer}'.")
-
-        return answer
 
     def load_page(self, sleep=1):
         scroll_page = 0
