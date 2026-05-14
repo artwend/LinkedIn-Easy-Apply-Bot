@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import shutil
-
 import json
 import csv
 import logging
@@ -25,10 +23,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-
-from selenium.webdriver.chrome.service import Service as ChromeService
-import webdriver_manager.chrome as ChromeDriverManager
-ChromeDriverManager = ChromeDriverManager.ChromeDriverManager
 
 
 log = logging.getLogger(__name__)
@@ -98,18 +92,7 @@ class EasyApplyBot:
         self.filename: str = filename
         self.options = self.browser_options()
 
-        # Fix chromedriver on NixOS
-
-        chromedriver_path = shutil.which("chromedriver")
-        chrome_path = shutil.which("chromium") or shutil.which("google-chrome")
-
-        if not chromedriver_path:
-            raise FileNotFoundError("Chromedriver not found in PATH.")
-        if not chrome_path:
-            raise FileNotFoundError("Chromium/Chrome not found in PATH.")
-
-        self.options.binary_location = chrome_path
-        self.browser = webdriver.Chrome(service=ChromeService(chromedriver_path), options=self.options)
+        self.browser = webdriver.Chrome(options=self.options)
 
         self.wait = WebDriverWait(self.browser, 30)
         self.blacklist = blacklist
@@ -156,6 +139,10 @@ class EasyApplyBot:
 
 
     def get_appliedIDs(self, filename) -> list | None:
+        if not Path(filename).is_file():
+            log.info("No CSV file found, starting fresh")
+            return None
+
         try:
             df = pd.read_csv(filename,
                              header=None,
@@ -695,7 +682,8 @@ class EasyApplyBot:
 
 if __name__ == '__main__':
 
-    with open("config.yaml", 'r') as stream:
+    config_absolute_path = os.path.expandvars("%USERPROFILE%/Documents/jobserach/config.yaml")
+    with open(config_absolute_path, 'r') as stream:
         try:
             parameters = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
@@ -733,7 +721,7 @@ if __name__ == '__main__':
                        parameters['salary'],
                        parameters['rate'], 
                        uploads=uploads,
-                       filename=output_filename,
+                       filename=os.path.expandvars(output_filename),
                        blacklist=blacklist,
                        blackListTitles=blackListTitles,
                        experience_level=parameters.get('experience_level', [])
