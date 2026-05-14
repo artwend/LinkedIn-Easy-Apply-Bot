@@ -1,3 +1,0 @@
-[submodule "webdriver_manager"]
-	path = webdriver_manager
-	url = git@github.com:ba2512005/webdriver_manager.git
