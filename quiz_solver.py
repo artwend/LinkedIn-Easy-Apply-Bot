@@ -14,7 +14,9 @@ log = logging.getLogger(__name__)
 
 
 class QuizSolver:
-    def __init__(self, salary: str, qa_file: Path | str = Path("qa.csv")) -> None:
+    def __init__(self, browser: WebDriver, salary: str, qa_file: Path | str = Path("qa.csv")) -> None:
+        self.browser = browser
+        self.wait = WebDriverWait(self.browser, 30)
         self.salary = salary
         self.qa_file = Path(qa_file)
         self.answers: dict[str, str] = {}
@@ -27,9 +29,9 @@ class QuizSolver:
             df = pd.DataFrame(columns=["Question", "Answer"])
             df.to_csv(self.qa_file, index=False, encoding="utf-8")
 
-    def process_questions(self, browser: WebDriver, locator: dict[str, tuple[Any, str]], wait: WebDriverWait) -> None:
+    def process_questions(self, locator: dict[str, tuple[Any, str]]) -> None:
         time.sleep(1)
-        fields = browser.find_elements(locator["fields"][0], locator["fields"][1])
+        fields = self.browser.find_elements(locator["fields"][0], locator["fields"][1])
         for field in fields:
             question = field.text
             answer = self.ans_question(question.lower())
@@ -40,7 +42,7 @@ class QuizSolver:
                         By.CSS_SELECTOR,
                         f"input[type='radio'][value={answer}]"
                     )
-                    browser.execute_script("arguments[0].click();", radio)
+                    self.browser.execute_script("arguments[0].click();", radio)
                 except Exception as e:
                     log.error(e)
                     continue
@@ -70,7 +72,7 @@ class QuizSolver:
                         By.CSS_SELECTOR,
                         f"input[type='radio'][value={answer}]"
                     )
-                    browser.execute_script("arguments[0].click();", radio)
+                    self.browser.execute_script("arguments[0].click();", radio)
                 except Exception:
                     pass
                 continue
