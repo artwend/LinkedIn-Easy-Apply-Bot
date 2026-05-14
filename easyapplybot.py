@@ -27,7 +27,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 log = logging.getLogger(__name__)
 
-
 def setupLogger() -> None:
     dt: str = datetime.strftime(datetime.now(), "%m_%d_%y %H_%M_%S ")
 
@@ -94,6 +93,7 @@ class EasyApplyBot:
 
         self.browser = webdriver.Chrome(options=self.options)
 
+        page_is_loaded = lambda driver: driver.execute_script('return document.readyState') == 'complete'
         self.wait = WebDriverWait(self.browser, 30)
         self.blacklist = blacklist
         self.blackListTitles = blackListTitles
@@ -179,6 +179,7 @@ class EasyApplyBot:
     def start_linkedin(self, username, password) -> None:
         log.info("Logging in.....Please wait :)  ")
         self.browser.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
+        self.wait.until(self.page_is_loaded)
         try:
             user_field = self.browser.find_element("id","username")
             pw_field = self.browser.find_element("id","password")
@@ -187,11 +188,12 @@ class EasyApplyBot:
             )
             user_field.send_keys(username)
             user_field.send_keys(Keys.TAB)
-            time.sleep(2)
+            time.sleep(1)
             pw_field.send_keys(password)
-            time.sleep(2)
+            time.sleep(1)
             login_button.click()
-            time.sleep(15)
+            self.wait.until(EC.url_to_be("https://www.linkedin.com/feed/"))
+            # time.sleep(15)
             # if self.is_present(self.locator["2fa_oneClick"]):
             #     oneclick_auth = self.browser.find_element(by='id', value='reset-password-submit-button')
             #     if oneclick_auth is not None:
