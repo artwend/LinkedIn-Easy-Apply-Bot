@@ -1,13 +1,31 @@
 import logging
 import os
 import yaml
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 from easyapplybot import EasyApplyBot
 
 log = logging.getLogger(__name__)
 
+def init_browser():
+    browser_options = webdriver.ChromeOptions()
+    options = ['--start-maximized',
+               '--ignore-certificate-errors', 
+               '--no-sandbox',
+               '--disable-extensions',
+               '--disable-blink-features',
+               '--disable-blink-features=AutomationControlled']
+
+    for option in options:
+        browser_options.add_argument(option)
+
+    driver = webdriver.Chrome(options=browser_options)
+
+    return driver
 
 if __name__ == '__main__':
+    browser = init_browser()
 
     config_absolute_path = os.path.expandvars("%USERPROFILE%/Documents/jobserach/config.yaml")
     with open(config_absolute_path, 'r') as stream:
@@ -42,7 +60,8 @@ if __name__ == '__main__':
     locations: list = [l for l in parameters['locations'] if l is not None]
     positions: list = [p for p in parameters['positions'] if p is not None]
 
-    bot = EasyApplyBot(parameters['username'],
+    bot = EasyApplyBot(browser,
+                       parameters['username'],
                        parameters['password'],
                        parameters['phone_number'],
                        parameters['salary'],
