@@ -57,9 +57,6 @@ if __name__ == '__main__':
     for key in uploads.keys():
         assert uploads[key] is not None
 
-    locations: list = [l for l in parameters['locations'] if l is not None]
-    positions: list = [p for p in parameters['positions'] if p is not None]
-
     bot = EasyApplyBot(browser,
                        parameters['username'],
                        parameters['password'],
@@ -72,4 +69,8 @@ if __name__ == '__main__':
                        blackListTitles=blackListTitles,
                        experience_level=parameters.get('experience_level', [])
                        )
+    
+    positions = parameters.get('positions', [])
+    locations = parameters.get('locations', [])
+
     bot.start_apply(positions, locations)

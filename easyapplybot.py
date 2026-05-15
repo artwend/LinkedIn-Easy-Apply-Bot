@@ -51,32 +51,28 @@ def setupLogger() -> None:
 
 @dataclass
 class SearchParams:
-    position: str
-    location: str
     experience_level: list[int] = field(default_factory=list)
     easy_apply: bool = False
 
-    # def location_param(self) -> str:
-    #     return self.location if self.location.startswith("&location=") else f"&location={self.location}"
 
-
-def generate_search_url(search_params: SearchParams, start_from: int) -> str:
-    experience_level = search_params.experience_level or []
+def generate_search_url(search_params) -> str:
+    experience_level = search_params['experience_level'] if 'experience_level' in search_params else []
     experience_level_str = ",".join(map(str, experience_level)) if experience_level else ""
     experience_level_param = f"&f_E={experience_level_str}" if experience_level_str else ""
-    location_param: str = search_params.location if search_params.location.startswith("&location=") else f"&location={search_params.location}"
-    easy_apply_param = "&f_LF=f_AL" if search_params.easy_apply else ""
+    easy_apply_param = "&f_LF=f_AL" if search_params['easy_apply'] else ""
 
     return (
         "https://www.linkedin.com/jobs/search/?"
         + easy_apply_param
-        + "&keywords="
-        + search_params.position
-        + location_param
-        + "&start="
-        + str(start_from)
         + experience_level_param
     )
+
+
+def sleep_random(min_seconds: float = 1, max_seconds: float = 3.5) -> float:
+    wait_time = random.uniform(min_seconds, max_seconds)
+    log.debug(f"Sleeping for {round(wait_time, 1)} seconds")
+    time.sleep(wait_time)
+    return wait_time
 
 
 class EasyApplyBot:
@@ -124,6 +120,11 @@ class EasyApplyBot:
         self.salary = salary
         self.rate = rate
         # self.profile_path = profile_path
+        parameters = {
+            "experience_level": experience_level,
+            "easy_apply": True
+        }
+        self.base_search_url = generate_search_url(parameters)
         past_ids: list | None = self.get_appliedIDs(filename)
         self.appliedJobIDs: list = past_ids if past_ids != None else []
         self.filename: str = filename
@@ -182,11 +183,11 @@ class EasyApplyBot:
     def login(self, username, password) -> None:
         log.info("Logging in.....Please wait :)  ")
         self.browser.get("https://www.linkedin.com/login")
-        # self.wait.until(self.page_is_loaded)
-        time.sleep(5)
+        self.wait.until(self.page_is_loaded)
+        # time.sleep(5)
         try:
-            user_field = self.browser.find_element(By.ID, "username")
-            pw_field = self.browser.find_element(By.ID, "password")
+            user_field = self.browser.find_element(By.ID, 'username')
+            pw_field = self.browser.find_element(By.ID, 'password')
             login_button = self.browser.find_element(
                 By.CSS_SELECTOR, 'button[type="submit"]'
             )
@@ -221,14 +222,8 @@ class EasyApplyBot:
         jobs_per_page = 25
         for (position, location) in combos:
             page_number = 0
-            search_params = SearchParams(
-                position=position,
-                location=location,
-                experience_level=self.experience_level,
-            )
-
             log.info(f"Applying to {position}: {location}")
-            self.next_jobs_page(search_params, page_number * jobs_per_page)
+            self.next_jobs_page(position, location, page_number * jobs_per_page)
             # self.applications_loop(search_params)
             log.info("Applying to jobs with this criteria is complete!")
 
@@ -253,9 +248,7 @@ class EasyApplyBot:
                 log.info(f"{(self.MAX_SEARCH_TIME - (time.time() - start_time)) // 60} minutes left in this search")
 
                 # sleep to make sure everything loads, add random to make us look human.
-                randoTime: float = random.uniform(1.5, 2.9)
-                log.debug(f"Sleeping for {round(randoTime, 1)}")
-                #time.sleep(randoTime)
+                sleep_random(1.5, 2.9)
                 self.load_page(sleep=0.5)
 
                 # LinkedIn displays the search results in a scrollable <div> on the left side, we have to scroll to its bottom
@@ -577,9 +570,9 @@ class EasyApplyBot:
         pyautogui.press('esc')
 
 
-    def next_jobs_page(self, search_params: SearchParams, jobs_per_page: int):
-        url = generate_search_url(search_params, jobs_per_page)
-        self.browser.get(url)
+    def next_jobs_page(self, position: str,location: str, start_from: int):
+        self.browser.get(self.base_search_url + "&keywords=" + position +
+                         "&location=" + location + "&start=" + str(start_from))
         #self.avoid_lock()
         log.info("Loading next job page?")
         self.load_page()
