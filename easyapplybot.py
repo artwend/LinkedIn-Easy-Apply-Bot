@@ -240,9 +240,6 @@ class EasyApplyBot:
         self.next_jobs_page(search_params, page_number)
         log.info("Looking for jobs.. Please wait..")
 
-        while True:
-            time.sleep(1)
-
         while time.time() - start_time < self.MAX_SEARCH_TIME:
             try:
                 log.info(f"{(self.MAX_SEARCH_TIME - (time.time() - start_time)) // 60} minutes left in this search")
@@ -558,6 +555,14 @@ class EasyApplyBot:
         page = BeautifulSoup(self.browser.page_source, "lxml")
         return page
 
+    def scroll_slow(self, scrollable_element, start=0, end=3600, step=100, reverse=False):
+        if reverse:
+            start, end = end, start
+            step = -step
+
+        for i in range(start, end, step):
+            self.browser.execute_script("arguments[0].scrollTo(0, {})".format(i), scrollable_element)
+            sleep_random(1.0, 2.6)
 
     def avoid_lock(self) -> None:
         x, _ = pyautogui.position()
