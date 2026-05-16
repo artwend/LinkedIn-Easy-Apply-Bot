@@ -223,11 +223,41 @@ class EasyApplyBot:
         for (position, location) in combos:
             page_number = 0
             log.info(f"Applying to {position}: {location}")
-            self.next_jobs_page(position, location, page_number * jobs_per_page)
-            # self.applications_loop(search_params)
+
+            try:
+                while True:
+                    self.next_jobs_page(position, location, page_number * jobs_per_page)
+                    self.apply_jobs()
+                    page_number += 1
+            except Exception as e:
+                log.info(f"An error occurred while applying to jobs: {e}")
+
             log.info("Applying to jobs with this criteria is complete!")
 
     # self.finish_apply() --> this does seem to cause more harm than good, since it closes the browser which we usually don't want, other conditions will stop the loop and just break out
+
+    def apply_jobs(self):
+        start_time: float = time.time()
+        log.info("Waiting for page loaded...")
+        # self.wait.until(self.page_is_loaded)
+        time.sleep(5)
+        log.info(f"Page loaded in {time.time() - start_time} seconds")
+        # self.wait.until(EC.presence_of_all_elements_located((By.XPATH, "//li[@data-occludable-job-id]")))
+        
+        search_results_footer = self.browser.find_element(By.XPATH, "//div[@id='jobs-search-results-footer']")
+        search_results = self.browser.find_element(By.XPATH, "//div[@id='jobs-search-results-footer']/parent::div")
+
+        # element.scroll({ top: element.scrollHeight, behavior: 'smooth' })
+        self.browser.execute_script('arguments[0].scroll({top: arguments[0].scrollHeight, behavior: "smooth" });', search_results)
+
+        # self.scroll_to_bottom(search_results_footer)
+
+        job_items = self.browser.find_elements(By.XPATH, "//li[@data-occludable-job-id]")
+
+        while True:
+            time.sleep(1)
+
+        return
 
     def applications_loop(self, search_params: SearchParams):
 
@@ -554,6 +584,10 @@ class EasyApplyBot:
 
         page = BeautifulSoup(self.browser.page_source, "lxml")
         return page
+    
+    def scroll_to_bottom(self, element: WebElement, smooth: bool = True) -> None:
+        behavior = "smooth" if smooth else "instant"
+        self.browser.execute_script('arguments[0].scrollIntoView({block: "bottom", behavior: "'+behavior+'" });', element)
 
     def scroll_slow(self, scrollable_element, start=0, end=3600, step=100, reverse=False):
         if reverse:
@@ -579,8 +613,8 @@ class EasyApplyBot:
         self.browser.get(self.base_search_url + "&keywords=" + position +
                          "&location=" + location + "&start=" + str(start_from))
         #self.avoid_lock()
-        log.info("Loading next job page?")
-        self.load_page()
+
+        # self.load_page()
 
     # def finish_apply(self) -> None:
     #     self.browser.close()
